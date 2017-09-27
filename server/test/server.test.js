@@ -4,41 +4,18 @@ const {ObjectID} = require('mongodb');
 
 var {app} = require('./../server');
 var Todo = require('./../models/Todo');
+var User = require('./../models/User');
+var todoSeeder = require('./seeds/todos');
+var userSeeder = require('./seeds/users');
+var todos = todoSeeder.seeds;
+var users = userSeeder.seeds;
 
 var expect = chai.expect;
 var errorHandler = e => done(e);
-var seedCollection = done => {
-    Todo.remove({})
-    .then( () =>  {
-        Todo.insertMany(todos)
-            .then(() => done())
-            .catch(errorHandler);
-    })
-    .catch(errorHandler);
-};
-
-const todos = [
-    {
-        _id: new ObjectID(),
-        text: 'First thing to do'
-    },
-    {
-        _id: new ObjectID(),
-        text: 'Second thing to do',
-        completed: true,
-        completedAt: 123
-    }
-];
-
-
 
 describe('POST /todos', () => {
 
-    beforeEach(done => {
-        Todo.remove({})
-            .then( () => done() )
-            .catch(errorHandler);
-    });
+    beforeEach(todoSeeder.removeAll);
 
     it('should create new todo', done => {
         var text = 'Something to do';
@@ -105,7 +82,7 @@ describe('POST /todos', () => {
 
 describe('GET /todos', () => {
 
-    before(seedCollection);
+    before(todoSeeder.populate);
 
     it('should list all todos', done => {
 
@@ -125,7 +102,7 @@ describe('GET /todos', () => {
 
 describe('GET /todos/:id', () => {
 
-    before(seedCollection);
+    before(todoSeeder.populate);
 
     it('should return a todo', done => {
         var doc = todos[0];
@@ -165,7 +142,7 @@ describe('GET /todos/:id', () => {
 
 describe('DELETE /todos/:id', () => {
 
-    before(seedCollection);
+    before(todoSeeder.populate);
 
     it('should remove a todo', done => {
         var doc = todos[0];
@@ -215,7 +192,7 @@ describe('DELETE /todos/:id', () => {
 
 describe('PATCH /todos/:id', () => {
 
-    before(seedCollection);
+    before(todoSeeder.populate);
 
     it('should update todo', done => {
         var doc = todos[0];
@@ -266,6 +243,147 @@ describe('PATCH /todos/:id', () => {
                 expect(res.body)
                     .to.have.property('completedAt')
                     .to.be.null;
+            })
+            .end(done)
+        ;
+    });
+
+});
+
+describe('GET /users/me', () => {
+
+    before(userSeeder.populate);
+
+    it('should return user if authenticated', done => {
+        var user = users[0];
+
+        request(app)
+            .get('/users/me')
+            .set('x-auth', user.tokens[0].token)
+            .expect(200)
+            .expect(res => {
+                expect(res.body).to.exist;
+
+                expect(res.body._id)
+                    .to.equal(user._id.toHexString());
+                
+                expect(res.body.email)
+                    .to.equal(user.email);
+            })
+            .end(done)
+        ;
+    });
+
+    it('should return 401 "Not Authorized" if user not found', done => {
+        var userID = new ObjectID().toHexString();
+        var newToken = User.generateAuthToken(userID);
+
+        request(app)
+            .get('/users/me')
+            .set('x-auth', newToken.token)
+            .expect(401)
+            .expect(res => {
+                expect(res.body).to.be.empty;
+            })
+            .end(done)
+        ;
+    });
+
+    it('should return 401 "Not Authorized" if not authenticated', done => {
+
+        request(app)
+            .get('/users/me')
+            .expect(401)
+            .expect(res => {
+                expect(res.body).to.be.empty;
+            })
+            .end(done)
+        ;
+    });
+});
+
+describe('POST /users', () => {
+
+    before(userSeeder.populate);
+
+    it('should create user', done => {
+        var sampleUser = {
+            email: 'userTest@example.com',
+            password: '123abc!'
+        };
+
+        request(app)
+            .post('/users')
+            .send(sampleUser)
+            .expect(200)
+            .expect(res => {
+                expect(res.headers['x-auth'])
+                    .to.exist
+                    .and.to.be.a('string')
+                    .that.is.not.empty;
+                
+                expect(res.body)
+                    .to.exist
+                    .and.not.be.empty;
+
+                expect(res.body._id)
+                    .to.exist
+                    .and.to.be.a('string')
+                    .that.is.not.empty
+
+                expect(res.body.email)
+                    .to.equal(sampleUser.email);
+
+            })
+            .end(err => {
+                if(err)
+                    return done(err);
+
+                User.findOne({email:sampleUser.email})
+                    .then(res => {
+                        expect(res).to.exist;
+
+                        expect(res.password)
+                            .to.not.equal(sampleUser.password);
+
+                        return true;
+                    })
+                    .then(() => User.remove({email:sampleUser.email}))
+                    .then(() => done())
+                    .catch(done)
+                ;
+            })
+    });
+
+    it('should not create user with invalid data', done => {
+        var sampleUser = {
+            email: 'InvalidExampleDotcom',
+            password: '123ab'
+        };
+
+        request(app)
+            .post('/users')
+            .send(sampleUser)
+            .expect(400)
+            .expect(res => {
+                expect(res.body).to.be.empty;
+            })
+            .end(done)
+        ;
+    });
+
+    it('should not create user with email in use', done => {
+        var sampleUser = {
+            email: users[0].email,
+            password: users[0].password
+        };
+
+        request(app)
+            .post('/users')
+            .send(sampleUser)
+            .expect(400)
+            .expect(res => {
+                expect(res.body).to.be.empty;
             })
             .end(done)
         ;

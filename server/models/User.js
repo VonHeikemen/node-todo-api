@@ -3,8 +3,7 @@ const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
 const bcrypt = require('bcryptjs');
-
-var secret = '123'; //Doesn't belong in here
+const secret = '123';
 
 var UserSchema = new mongoose.Schema({
     email: {
@@ -35,6 +34,18 @@ var UserSchema = new mongoose.Schema({
     }]
 });
 
+function generateAuthToken(hexId) {
+    var access = 'auth';
+    var token = jwt.sign({
+        _id: hexId,
+        access
+    }, secret).toString();
+
+    return { 
+        access, 
+        token 
+    };
+}
 
 UserSchema.methods.toJSON = function () {
     var user = this;
@@ -42,18 +53,16 @@ UserSchema.methods.toJSON = function () {
     return _.pick(user.toObject(), ['_id', 'email']);
 };
 
-UserSchema.methods.generateAuthToken = function() {
-    var user = this; //An instance of the model
-    var access = 'auth';
+UserSchema.statics.generateAuthToken = generateAuthToken;
 
-    var token = jwt.sign({
-        _id: user._id.toHexString(),
-        access
-    }, secret).toString();
+UserSchema.methods.saveAuthToken = function() {
+    var user = this;
+    var id = user._id.toHexString();
+    var tokenAccess = generateAuthToken(id);
 
-    user.tokens.push({access, token});
+    user.tokens.push(tokenAccess);
 
-    return user.save().then(res => token);
+    return user.save().then(res => tokenAccess.token);
 };
 
 UserSchema.statics.findByToken = function (token) {
