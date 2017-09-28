@@ -55,7 +55,7 @@ UserSchema.methods.toJSON = function () {
 
 UserSchema.statics.generateAuthToken = generateAuthToken;
 
-UserSchema.methods.saveAuthToken = function() {
+UserSchema.methods.newAuthToken = function() {
     var user = this;
     var id = user._id.toHexString();
     var tokenAccess = generateAuthToken(id);
@@ -79,6 +79,27 @@ UserSchema.statics.findByToken = function (token) {
         'tokens.token': token
     });
     
+};
+
+UserSchema.statics.authenticate = function ({email, password}) {
+    var User = this;
+    var authenticated;
+
+    return User.findOne({email})
+        .then(user => {
+            if(!user)
+                return Promise.reject();
+
+            authenticated = user;
+            return bcrypt.compare(password, user.password);
+        })
+        .then(match => {
+                return (match) 
+                    ? authenticated 
+                    : Promise.reject()
+            }
+        )
+    ;
 };
 
 UserSchema.pre('save', function(next){

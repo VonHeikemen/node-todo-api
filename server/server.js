@@ -117,8 +117,10 @@ app.post('/users', (req, res) => {
     var user = new User(input);
 
     user.save()
-        .then(res => user.saveAuthToken())
-        .then(token => res.header('x-auth', token).send(user))
+        .then(res => user.newAuthToken())
+        .then(token => {
+            res.header('x-auth', token).send(user);
+        })
         .catch(e => {
             res.status(400).send();
         })
@@ -127,6 +129,25 @@ app.post('/users', (req, res) => {
 
 app.get('/users/me', authenticate, (req, res) => {
     res.send(req.user);
+});
+
+app.post('/users/login', (req, res) => {
+    var input = _.pick(req.body, ['email', 'password']);
+    var user;
+
+    User.authenticate(input)
+        .then(authUser => {
+            user = authUser;
+            return authUser.newAuthToken()
+        })
+        .then(token => {
+            res.header('x-auth', token).send(user);
+        })
+        .catch(e => (
+                res.status(400).send()
+            )
+        )
+    ;
 });
 
 app.listen(port, () => {
