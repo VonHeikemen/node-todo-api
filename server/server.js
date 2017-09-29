@@ -150,6 +150,13 @@ app.post('/users/login', (req, res) => {
     ;
 });
 
+app.delete('/users/me/logout', authenticate, (req, res) => {
+    req.user.removeToken(req.token)
+        .then(() => res.send())
+        .catch(() => res.status(400).send())
+    ;
+});
+
 app.listen(port, () => {
     console.log('Running on port', port, '\n');
 });

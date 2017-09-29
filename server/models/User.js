@@ -65,6 +65,15 @@ UserSchema.methods.newAuthToken = function() {
     return user.save().then(res => tokenAccess.token);
 };
 
+UserSchema.methods.removeToken = function(token) {
+    var user = this;
+    var currentToken = {
+        tokens: {token}
+    };
+
+    return user.update({$pull: currentToken})
+};
+
 UserSchema.statics.findByToken = function (token) {
     try {
         var User = this; //the model class
