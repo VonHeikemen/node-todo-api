@@ -102,8 +102,6 @@ describe('GET /todos', () => {
 
 describe('GET /todos/:id', () => {
 
-    before(todoSeeder.populate);
-
     it('should return a todo', done => {
         var doc = todos[0];
         var docId = doc._id.toHexString();
@@ -141,8 +139,6 @@ describe('GET /todos/:id', () => {
 });
 
 describe('DELETE /todos/:id', () => {
-
-    before(todoSeeder.populate);
 
     it('should remove a todo', done => {
         var doc = todos[0];
@@ -304,8 +300,6 @@ describe('GET /users/me', () => {
 
 describe('POST /users', () => {
 
-    before(userSeeder.populate);
-
     it('should create user', done => {
         var sampleUser = {
             email: 'userTest@example.com',
@@ -388,5 +382,83 @@ describe('POST /users', () => {
             .end(done)
         ;
     });
+});
 
+describe('POST /users/login', () => {
+
+    beforeEach(userSeeder.populate);
+
+    it('should return user if authenticated', done => {
+        var input = {
+            email: users[1].email,
+            password: users[1].password
+        };
+
+        request(app)
+            .post('/users/login')
+            .send(input)
+            .expect(200)
+            .expect(res => {
+                expect(res.headers)
+                    .to.have.property('x-auth')
+                    .to.be.a('string')
+                    .that.is.not.empty
+
+                expect(res.body)
+                    .to.not.be.empty
+                
+                expect(res.body.email).to.equal(input.email);
+                expect(res.body._id).to.exist;
+                expect(res.body.password).to.not.exist;
+            })
+            .end((err, res) => {
+                if(err)
+                    return done(err);
+
+                User.findById(users[1]._id)
+                    .then(user => {
+                        expect(user.tokens[0])
+                            .to.include({
+                                access: 'auth',
+                                token: res.headers['x-auth']
+                            })
+                        ;
+                        done();
+                    })
+                    .catch(done)
+                ;
+            })
+        ;
+    });
+
+    it('should return 400 "Bad request" if not authenticated', done => {
+        var input = {
+            email: users[1].email,
+            password: users[1].password + '1'
+        };
+
+        request(app)
+            .post('/users/login')
+            .send(input)
+            .expect(400)
+            .expect(res => {
+                expect(res.headers['x-auth'])
+                    .to.not.exist;
+
+                expect(res.body).to.be.empty
+                done();
+            })
+            .end((err, res) => {
+                if(err)
+                    return done(err);
+
+                User.findById(users[1]._id)
+                    .then(user => {
+                        expect(user.tokens).to.be.empty;
+                    })
+                    .catch(done)
+                ;
+            })
+        ;
+    });
 });

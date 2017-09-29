@@ -41,8 +41,8 @@ function generateAuthToken(hexId) {
         access
     }, secret).toString();
 
-    return { 
-        access, 
+    return {
+        access,
         token 
     };
 }

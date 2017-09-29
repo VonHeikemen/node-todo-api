@@ -26,7 +26,7 @@ describe('User model ', () => {
         expect(decoded.access).to.be.equal('auth');
     });
 
-    it('should return save token access on user', done =>{
+    it('should return saved token access on user', done =>{
         var sampleUser = {
             email: 'userTest@example.com',
             password: '123abc!'
@@ -43,7 +43,7 @@ describe('User model ', () => {
                 expect(res._id)
                     .to.be.instanceof(ObjectID);
 
-                 return user.saveAuthToken();
+                 return user.newAuthToken();
             })
             .then(token => {
                 expect(token).to.be.a('string');
