@@ -462,3 +462,31 @@ describe('POST /users/login', () => {
         ;
     });
 });
+
+describe('DELETE /users/me/logout', () => {
+
+    before(userSeeder.populate);
+
+    it('should remove auth token on logout', done => {
+        var token = users[0].tokens[0].token;
+
+        request(app)
+            .delete('/users/me/logout')
+            .set('x-auth', token)
+            .expect(200)
+            .end((err, res) => {
+                if(err)
+                    return done(err);
+
+                User.findById(users[0]._id)
+                    .then(user => {
+                        expect(user.tokens).to.be.empty;
+                        done();
+                    })
+                    .catch(done)
+                ;
+            })
+        ;
+    });
+
+});
