@@ -124,6 +124,18 @@ describe('GET /todos/:id', () => {
         ;
     });
 
+    it('should not return a todo owned by another user', done => {
+        var doc = todos[1];
+        var docId = doc._id.toHexString();
+
+        request(app)
+            .get(`/todos/${docId}`)
+            .set('x-auth', users[0].tokens[0].token)
+            .expect(404)
+            .end(done)
+        ;
+    });
+
     it('should return 404 "Not Found" if id is invalid', done => {
         request(app)
             .get('/todos/123')
@@ -168,6 +180,28 @@ describe('DELETE /todos/:id', () => {
                 Todo.findById(docId)
                     .then(doc => {
                         expect(doc).to.be.null;
+                        done();
+                    })
+                ;
+            })
+        ;
+    });
+
+    it('should not remove a todo created by another user', done => {
+        var doc = todos[0];
+        var docId = doc._id.toHexString();
+
+        request(app)
+            .delete(`/todos/${docId}`)
+            .set('x-auth', users[1].tokens[0].token)
+            .expect(404)
+            .end((err, res) => {
+                if(err)
+                    return done(err);
+
+                Todo.findById(docId)
+                    .then(doc => {
+                        expect(doc).to.exist
                         done();
                     })
                 ;
@@ -229,6 +263,46 @@ describe('PATCH /todos/:id', () => {
                     .that.is.a('number');
             })
             .end(done)
+        ;
+    });
+
+    it('should not update todo created by another user', done => {
+        var doc = todos[0];
+        var docId = doc._id.toHexString();
+
+        var input = {
+            text: 'New Text from test',
+            completed: true
+        };
+
+        request(app)
+            .patch(`/todos/${docId}`)
+            .set('x-auth', users[1].tokens[0].token)
+            .send(input)
+            .expect(404)
+            .end((err, res) => {
+                if(err)
+                    return done(err);
+
+                Todo.findById(docId)
+                    .then(doc => {
+
+                        expect(doc).to.exist;
+        
+                        expect(doc.text)
+                            .is.not.equal(input.text);
+        
+                        expect(doc.completed)
+                            .to.be.false;
+        
+                        expect(doc.completedAt)
+                            .to.be.null;
+                        
+                        done();
+                    })
+                    .catch(done)
+                ;
+            })
         ;
     });
 
@@ -348,10 +422,8 @@ describe('POST /users', () => {
                         expect(res.password)
                             .to.not.equal(sampleUser.password);
 
-                        return true;
+                        done();
                     })
-                    .then(() => User.remove({email:sampleUser.email}))
-                    .then(() => done())
                     .catch(done)
                 ;
             })
