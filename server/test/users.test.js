@@ -6,7 +6,7 @@ const {ObjectID} = require('mongodb');
 const User = require('./../models/User');
 
 const expect = chai.expect;
-const secret = '123';
+const secret = process.env.JWT_SECRET;
 
 describe('User model ', () => {
     before(done => {

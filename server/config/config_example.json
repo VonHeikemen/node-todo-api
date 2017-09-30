@@ -1,0 +1,7 @@
+{
+    "enviroment":{
+        "PORT": 0,
+        "MONGODB_URI": "mongodb://something:00000/DatabaseName",
+        "JWT_SECRET": "someString"
+    }
+}
