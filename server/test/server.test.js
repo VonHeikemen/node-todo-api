@@ -13,18 +13,20 @@ var users = userSeeder.seeds;
 var expect = chai.expect;
 var errorHandler = e => done(e);
 
+beforeEach(userSeeder.populate);
+beforeEach(todoSeeder.populate);
+
 describe('POST /todos', () => {
 
-    beforeEach(todoSeeder.removeAll);
-
     it('should create new todo', done => {
-        var text = 'Something to do';
+        var text = 'Something to do'
 
         request(app)
             .post('/todos')
             .send({
                 text
             })
+            .set('x-auth', users[0].tokens[0].token)
             .expect(200)
             .expect(res => {
                 expect(res.body)
@@ -54,6 +56,7 @@ describe('POST /todos', () => {
         request(app)
             .post('/todos')
             .send({})
+            .set('x-auth', users[0].tokens[0].token)
             .expect(400)
             .expect(res => {
                 expect(res.body)
@@ -69,8 +72,10 @@ describe('POST /todos', () => {
                 Todo.find()
                     .then(todos => {
                         expect(todos)
-                            .to.have.lengthOf(0);
-                        
+                            .to.be.an('array')
+                            .with.lengthOf(2)
+                        ;
+
                         done();
                     })
                     .catch(errorHandler)
@@ -82,18 +87,17 @@ describe('POST /todos', () => {
 
 describe('GET /todos', () => {
 
-    before(todoSeeder.populate);
-
     it('should list all todos', done => {
 
         request(app)
             .get('/todos')
             .expect(200)
+            .set('x-auth', users[0].tokens[0].token)
             .expect(res => {
                 expect(res.body)
                     .to.have.property('todos')
                     .which.is.an('array')
-                    .with.lengthOf(2);
+                    .with.lengthOf(1);
             })
             .end(done)
         ;
@@ -108,6 +112,7 @@ describe('GET /todos/:id', () => {
 
         request(app)
             .get(`/todos/${docId}`)
+            .set('x-auth', users[0].tokens[0].token)
             .expect(200)
             .expect(res => {
                 expect(res.body)
@@ -122,6 +127,7 @@ describe('GET /todos/:id', () => {
     it('should return 404 "Not Found" if id is invalid', done => {
         request(app)
             .get('/todos/123')
+            .set('x-auth', users[0].tokens[0].token)
             .expect(404)
             .end(done)
         ;
@@ -132,6 +138,7 @@ describe('GET /todos/:id', () => {
 
         request(app)
             .get(`/todos/${docId}`)
+            .set('x-auth', users[0].tokens[0].token)
             .expect(404)
             .end(done)
         ;
@@ -146,6 +153,7 @@ describe('DELETE /todos/:id', () => {
 
         request(app)
             .delete(`/todos/${docId}`)
+            .set('x-auth', users[0].tokens[0].token)
             .expect(200)
             .expect(res => {
                 expect(res.body)
@@ -170,6 +178,7 @@ describe('DELETE /todos/:id', () => {
     it('should return 404 "Not Found" if id is invalid', done => {
         request(app)
             .delete('/todos/123')
+            .set('x-auth', users[0].tokens[0].token)
             .expect(404)
             .end(done)
         ;
@@ -180,6 +189,7 @@ describe('DELETE /todos/:id', () => {
 
         request(app)
             .delete(`/todos/${docId}`)
+            .set('x-auth', users[0].tokens[0].token)
             .expect(404)
             .end(done)
         ;
@@ -187,8 +197,6 @@ describe('DELETE /todos/:id', () => {
 });
 
 describe('PATCH /todos/:id', () => {
-
-    before(todoSeeder.populate);
 
     it('should update todo', done => {
         var doc = todos[0];
@@ -201,6 +209,7 @@ describe('PATCH /todos/:id', () => {
 
         request(app)
             .patch(`/todos/${docId}`)
+            .set('x-auth', users[0].tokens[0].token)
             .send(input)
             .expect(200)
             .expect(res => {
@@ -233,6 +242,7 @@ describe('PATCH /todos/:id', () => {
 
         request(app)
             .patch(`/todos/${docId}`)
+            .set('x-auth', users[1].tokens[0].token)
             .send(input)
             .expect(200)
             .expect(res => {
@@ -247,8 +257,6 @@ describe('PATCH /todos/:id', () => {
 });
 
 describe('GET /users/me', () => {
-
-    before(userSeeder.populate);
 
     it('should return user if authenticated', done => {
         var user = users[0];
@@ -386,8 +394,6 @@ describe('POST /users', () => {
 
 describe('POST /users/login', () => {
 
-    beforeEach(userSeeder.populate);
-
     it('should return user if authenticated', done => {
         var input = {
             email: users[1].email,
@@ -417,7 +423,7 @@ describe('POST /users/login', () => {
 
                 User.findById(users[1]._id)
                     .then(user => {
-                        expect(user.tokens[0])
+                        expect(user.tokens[1])
                             .to.include({
                                 access: 'auth',
                                 token: res.headers['x-auth']
@@ -454,7 +460,10 @@ describe('POST /users/login', () => {
 
                 User.findById(users[1]._id)
                     .then(user => {
-                        expect(user.tokens).to.be.empty;
+                        expect(user.tokens)
+                            .to.be.an('array')
+                            .with.length(1)
+                        ;
                     })
                     .catch(done)
                 ;
@@ -464,8 +473,6 @@ describe('POST /users/login', () => {
 });
 
 describe('DELETE /users/me/logout', () => {
-
-    before(userSeeder.populate);
 
     it('should remove auth token on logout', done => {
         var token = users[0].tokens[0].token;
@@ -480,7 +487,11 @@ describe('DELETE /users/me/logout', () => {
 
                 User.findById(users[0]._id)
                     .then(user => {
-                        expect(user.tokens).to.be.empty;
+                        expect(user.tokens)
+                            .to.be.an('array')
+                            .to.be.empty
+                        ;
+
                         done();
                     })
                     .catch(done)

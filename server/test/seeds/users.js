@@ -15,6 +15,7 @@ var seeds= [
 ];
 
 seeds[0].tokens = [User.generateAuthToken(seeds[0]._id.toHexString())];
+seeds[1].tokens = [User.generateAuthToken(seeds[1]._id.toHexString())];
 
 const populate = done => {
     User.remove({})

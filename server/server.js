@@ -20,8 +20,10 @@ app.get('/', (req, res) => {
     res.send('Jelou');
 });
 
-app.post('/todos', (req, res) => {
+app.post('/todos', authenticate, (req, res) => {
     var input = _.pick(req.body, ['text']);
+    input._author = req.user._id;
+
     var todo = new Todo(input);
 
     todo.save()
@@ -35,9 +37,9 @@ app.post('/todos', (req, res) => {
 
 });
 
-app.get('/todos', (req, res) => {
+app.get('/todos', authenticate, (req, res) => {
 
-    Todo.find()
+    Todo.find({_author: req.user._id})
         .then(todos => {
             res.send({todos});
         })
@@ -46,14 +48,17 @@ app.get('/todos', (req, res) => {
 
 });
 
-app.get('/todos/:id', (req, res) => {
+app.get('/todos/:id', authenticate, (req, res) => {
 
-    var {id} = req.params;
+    var filter = {
+        _id: req.params.id,
+        _author: req.user._id
+    };
 
-    if( !validateId(id) )
+    if( !validateId(filter._id) )
         res.status(404).send();
 
-    Todo.findById(id)
+    Todo.findOne(filter)
         .then(todo => {
             if(!todo)
                 res.status(404).send();
@@ -65,14 +70,17 @@ app.get('/todos/:id', (req, res) => {
 
 });
 
-app.delete('/todos/:id', (req, res) => {
+app.delete('/todos/:id', authenticate, (req, res) => {
 
-    var {id} = req.params;
+    var filter = {
+        _id: req.params.id,
+        _author: req.user._id
+    };
 
-    if( !validateId(id) )
+    if( !validateId(filter._id) )
         res.status(404).send();
 
-    Todo.findByIdAndRemove(id)
+    Todo.findOneAndRemove(filter)
         .then(todo => {
             if(!todo)
                 res.status(404).send();
@@ -84,12 +92,16 @@ app.delete('/todos/:id', (req, res) => {
 
 });
 
-app.patch('/todos/:id', (req, res) => {
+app.patch('/todos/:id', authenticate, (req, res) => {
 
-    var {id} = req.params;
+    var filter = {
+        _id: req.params.id,
+        _author: req.user._id
+    };
+
     var input = _.pick(req.body, ['text', 'completed']);
 
-    if( !validateId(id) )
+    if( !validateId(filter._id) )
         res.status(404).send();
 
     if( input.completed === true )
@@ -100,7 +112,7 @@ app.patch('/todos/:id', (req, res) => {
         input.completedAt = null;
     }
 
-    Todo.findByIdAndUpdate(id, {$set: input}, {new: true})
+    Todo.findOneAndUpdate(filter, {$set: input}, {new: true})
         .then(todo => {
             if(!todo)
                 res.status(404).send();
